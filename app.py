@@ -31,29 +31,63 @@ def estrai_partite_palermo():
         # IMPORTANTE: Cerca e clicca sul pulsante "Tutte" per caricare tutte le partite
         logger.info("🔘 Cerco pulsante 'Tutte'...")
         try:
-            # Usa JavaScript per cliccare sul pulsante che carica tutte le partite
-            response.html.page.evaluate("""
+            # Usa il selettore esatto trovato nell'HTML
+            click_success = response.html.page.evaluate("""
                 () => {
-                    // Cerca il pulsante con testo "Tutte" o simile
-                    const buttons = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
-                    const tutteButton = buttons.find(btn => 
-                        btn.textContent.toLowerCase().includes('tutte') || 
-                        btn.textContent.toLowerCase().includes('tutti')
-                    );
-                    if (tutteButton) {
-                        tutteButton.click();
-                        return true;
+                    // Cerca il container dei filtri
+                    const filterContainer = document.querySelector('.season-node__tabs__filters');
+                    if (!filterContainer) {
+                        console.log('Container filtri non trovato');
+                        return false;
                     }
+                    
+                    // Cerca tutti i tag_element
+                    const tags = filterContainer.querySelectorAll('.tag_element');
+                    console.log('Tag trovati:', tags.length);
+                    
+                    // Cerca il tag con testo "Tutte"
+                    let tutteTag = null;
+                    tags.forEach(tag => {
+                        const text = tag.textContent.trim();
+                        console.log('Tag text:', text);
+                        if (text === 'Tutte' || text.toLowerCase() === 'tutte') {
+                            tutteTag = tag;
+                        }
+                    });
+                    
+                    if (tutteTag) {
+                        console.log('Trovato tag Tutte, verifico se già attivo...');
+                        
+                        // Controlla se è già attivo
+                        if (tutteTag.classList.contains('active')) {
+                            console.log('Tag già attivo!');
+                            return 'already_active';
+                        }
+                        
+                        // Click sul tag
+                        console.log('Click su Tutte...');
+                        tutteTag.click();
+                        
+                        // Aspetta un attimo per il caricamento
+                        return 'clicked';
+                    }
+                    
+                    console.log('Tag Tutte non trovato');
                     return false;
                 }
             """)
-            logger.info("✅ Pulsante 'Tutte' cliccato")
             
-            # Aspetta che le partite vengano caricate
-            time.sleep(3)
+            if click_success == 'already_active':
+                logger.info("✅ Filtro 'Tutte' già attivo")
+            elif click_success == 'clicked':
+                logger.info("✅ Pulsante 'Tutte' cliccato con successo")
+                # Aspetta che le partite vengano caricate
+                time.sleep(5)
+            else:
+                logger.warning("⚠️ Pulsante 'Tutte' non trovato")
             
         except Exception as e:
-            logger.warning(f"⚠️ Non riesco a cliccare 'Tutte': {e}")
+            logger.warning(f"⚠️ Errore nel click 'Tutte': {e}")
             logger.info("📋 Continuo con le partite visibili...")
         
         # Cerca i match cards
