@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 import logging
 import os
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ CORS(app)
 
 def estrai_partite_palermo():
     """Estrae le partite dal sito del Palermo usando requests-html"""
+    session = None
     try:
         logger.info("🔍 Inizio estrazione partite...")
         
@@ -24,8 +26,37 @@ def estrai_partite_palermo():
         response = session.get(url, timeout=30)
         
         logger.info("⚙️ Rendering JavaScript...")
-        response.html.render(timeout=30, sleep=3)
+        response.html.render(timeout=30, sleep=2)
         
+        # IMPORTANTE: Cerca e clicca sul pulsante "Tutte" per caricare tutte le partite
+        logger.info("🔘 Cerco pulsante 'Tutte'...")
+        try:
+            # Usa JavaScript per cliccare sul pulsante che carica tutte le partite
+            response.html.page.evaluate("""
+                () => {
+                    // Cerca il pulsante con testo "Tutte" o simile
+                    const buttons = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
+                    const tutteButton = buttons.find(btn => 
+                        btn.textContent.toLowerCase().includes('tutte') || 
+                        btn.textContent.toLowerCase().includes('tutti')
+                    );
+                    if (tutteButton) {
+                        tutteButton.click();
+                        return true;
+                    }
+                    return false;
+                }
+            """)
+            logger.info("✅ Pulsante 'Tutte' cliccato")
+            
+            # Aspetta che le partite vengano caricate
+            time.sleep(3)
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Non riesco a cliccare 'Tutte': {e}")
+            logger.info("📋 Continuo con le partite visibili...")
+        
+        # Cerca i match cards
         match_cards = response.html.find('.match-card')
         logger.info(f"🎯 Trovati {len(match_cards)} match cards")
         
@@ -86,19 +117,23 @@ def estrai_partite_palermo():
                     partita["matchCenter"] = match_center_link
                 
                 partite.append(partita)
-                logger.info(f"✅ Partita {idx+1}: {partita['homeTeam']} vs {partita['awayTeam']}")
                 
             except Exception as e:
                 logger.error(f"❌ Errore partita {idx}: {e}")
                 continue
         
-        session.close()
-        logger.info(f"🎉 Estrazione completata: {len(partite)} partite")
+        logger.info(f"🎉 Estrazione completata: {len(partite)} partite totali")
         return partite
         
     except Exception as e:
         logger.error(f"❌ Errore generale: {e}")
         return []
+    finally:
+        if session:
+            try:
+                session.close()
+            except:
+                pass
 
 def converti_data_italiana(data_text):
     """Converte data italiana in formato ISO"""
@@ -126,17 +161,21 @@ def home():
     return jsonify({
         "status": "ok",
         "service": "API Calendario Palermo FC",
-        "version": "2.0",
+        "version": "3.0",
         "endpoints": {
             "/api/partite": "Tutte le partite",
             "/api/partite/casa": "Solo partite in casa del Palermo",
             "/health": "Health check"
-        }
+        },
+        "note": "Questa API estrae automaticamente TUTTE le partite cliccando sul pulsante 'Tutte'"
     })
 
 @app.route('/health')
 def health_check():
-    return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()})
+    return jsonify({
+        "status": "ok",
+        "timestamp": datetime.now().isoformat()
+    })
 
 @app.route('/api/partite', methods=['GET'])
 def get_partite():
@@ -144,4 +183,68 @@ def get_partite():
         logger.info("📥 Richiesta ricevuta: /api/partite")
         partite = estrai_partite_palermo()
         
-        if not part
+        if not partite:
+            logger.warning("⚠️ Nessuna partita estratta")
+            return jsonify({
+                "success": False,
+                "error": "Impossibile estrarre partite dal sito",
+                "count": 0,
+                "data": []
+            }), 500
+        
+        solo_casa = request.args.get('casa', 'false').lower() == 'true'
+        if solo_casa:
+            partite = [p for p in partite if p.get('homeTeam') == 'Palermo']
+            logger.info(f"🏠 Filtrate solo partite in casa: {len(partite)}")
+        
+        return jsonify({
+            "success": True,
+            "count": len(partite),
+            "data": partite,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Errore nell'endpoint: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/partite/casa', methods=['GET'])
+def get_partite_casa():
+    try:
+        logger.info("📥 Richiesta ricevuta: /api/partite/casa")
+        partite = estrai_partite_palermo()
+        
+        if not partite:
+            logger.warning("⚠️ Nessuna partita estratta")
+            return jsonify({
+                "success": False,
+                "error": "Impossibile estrarre partite dal sito",
+                "count": 0,
+                "data": []
+            }), 500
+        
+        partite_casa = [p for p in partite if p.get('homeTeam') == 'Palermo']
+        logger.info(f"🏠 Partite in casa: {len(partite_casa)}")
+        
+        return jsonify({
+            "success": True,
+            "count": len(partite_casa),
+            "data": partite_casa,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Errore nell'endpoint: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
