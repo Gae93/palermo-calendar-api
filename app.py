@@ -25,116 +25,54 @@ def estrai_partite_palermo():
         logger.info(f"📡 Recupero pagina: {url}")
         response = session.get(url, timeout=30)
         
-        logger.info("⚙️ Rendering JavaScript...")
+        logger.info("⚙️ Rendering JavaScript con click su 'Tutte'...")
         
-        # Render con script personalizzato per cliccare "Tutte"
-        response.html.render(
-            timeout=30, 
-            sleep=2,
-            script="""
-                () => {
-                    // Aspetta un po' per il caricamento
-                    return new Promise((resolve) => {
-                        setTimeout(() => {
-                            // Cerca il container dei filtri
-                            const filterContainer = document.querySelector('.season-node__tabs__filters');
-                            if (!filterContainer) {
-                                resolve('no_container');
-                                return;
-                            }
-                            
-                            // Cerca tutti i tag_element
-                            const tags = filterContainer.querySelectorAll('.tag_element');
-                            
-                            // Cerca il tag con testo "Tutte"
-                            let tutteTag = null;
-                            tags.forEach(tag => {
-                                const text = tag.textContent.trim();
-                                if (text === 'Tutte' || text.toLowerCase() === 'tutte') {
-                                    tutteTag = tag;
-                                }
-                            });
-                            
-                            if (tutteTag) {
-                                // Controlla se è già attivo
-                                if (tutteTag.classList.contains('active')) {
-                                    resolve('already_active');
-                                    return;
-                                }
-                                
-                                // Click sul tag
-                                tutteTag.click();
-                                
-                                // Aspetta il caricamento
-                                setTimeout(() => {
-                                    resolve('clicked');
-                                }, 3000);
-                            } else {
-                                resolve('not_found');
-                            }
-                        }, 1000);
-                    });
-                }
-            """
-        )
-        
-        logger.info("✅ Rendering completato con script 'Tutte'")
-        
-        # Aspetta ulteriormente per il caricamento delle partite
-        time.sleep(2)
-        
-        # VECCHIO METODO - Non più necessario
-        """
-        logger.info("🔘 Cerco pulsante 'Tutte'...")
-        try:
-            # Usa il selettore esatto trovato nell'HTML
-            click_success = None
-            if hasattr(response.html, 'page') and response.html.page:
-                click_success = response.html.page.evaluate("""
-                () => {
-                    // Cerca il container dei filtri
+        # Script JavaScript che verrà eseguito durante il rendering
+        js_script = """
+        () => {
+            return new Promise((resolve) => {
+                setTimeout(() => {
                     const filterContainer = document.querySelector('.season-node__tabs__filters');
                     if (!filterContainer) {
-                        console.log('Container filtri non trovato');
-                        return false;
+                        resolve('no_container');
+                        return;
                     }
                     
-                    // Cerca tutti i tag_element
                     const tags = filterContainer.querySelectorAll('.tag_element');
-                    console.log('Tag trovati:', tags.length);
-                    
-                    // Cerca il tag con testo "Tutte"
                     let tutteTag = null;
+                    
                     tags.forEach(tag => {
                         const text = tag.textContent.trim();
-                        console.log('Tag text:', text);
                         if (text === 'Tutte' || text.toLowerCase() === 'tutte') {
                             tutteTag = tag;
                         }
                     });
                     
                     if (tutteTag) {
-                        console.log('Trovato tag Tutte, verifico se già attivo...');
-                        
-                        // Controlla se è già attivo
                         if (tutteTag.classList.contains('active')) {
-                            console.log('Tag già attivo!');
-                            return 'already_active';
+                            resolve('already_active');
+                            return;
                         }
                         
-                        // Click sul tag
-                        console.log('Click su Tutte...');
                         tutteTag.click();
-                        
-                        // Aspetta un attimo per il caricamento
-                        return 'clicked';
+                        setTimeout(() => {
+                            resolve('clicked');
+                        }, 3000);
+                    } else {
+                        resolve('not_found');
                     }
-                    
-                    console.log('Tag Tutte non trovato');
-                }
-            """
-        )
+                }, 1000);
+            });
+        }
         """
+        
+        # Render con lo script per cliccare "Tutte"
+        response.html.render(timeout=40, sleep=2, script=js_script)
+        
+        logger.info("✅ Rendering completato")
+        
+        # Aspetta ulteriormente per assicurarsi che le partite siano caricate
+        time.sleep(2)
         
         # Cerca i match cards
         match_cards = response.html.find('.match-card')
