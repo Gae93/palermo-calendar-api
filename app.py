@@ -26,13 +26,71 @@ def estrai_partite_palermo():
         response = session.get(url, timeout=30)
         
         logger.info("⚙️ Rendering JavaScript...")
-        response.html.render(timeout=30, sleep=2)
         
-        # IMPORTANTE: Cerca e clicca sul pulsante "Tutte" per caricare tutte le partite
+        # Render con script personalizzato per cliccare "Tutte"
+        response.html.render(
+            timeout=30, 
+            sleep=2,
+            script="""
+                () => {
+                    // Aspetta un po' per il caricamento
+                    return new Promise((resolve) => {
+                        setTimeout(() => {
+                            // Cerca il container dei filtri
+                            const filterContainer = document.querySelector('.season-node__tabs__filters');
+                            if (!filterContainer) {
+                                resolve('no_container');
+                                return;
+                            }
+                            
+                            // Cerca tutti i tag_element
+                            const tags = filterContainer.querySelectorAll('.tag_element');
+                            
+                            // Cerca il tag con testo "Tutte"
+                            let tutteTag = null;
+                            tags.forEach(tag => {
+                                const text = tag.textContent.trim();
+                                if (text === 'Tutte' || text.toLowerCase() === 'tutte') {
+                                    tutteTag = tag;
+                                }
+                            });
+                            
+                            if (tutteTag) {
+                                // Controlla se è già attivo
+                                if (tutteTag.classList.contains('active')) {
+                                    resolve('already_active');
+                                    return;
+                                }
+                                
+                                // Click sul tag
+                                tutteTag.click();
+                                
+                                // Aspetta il caricamento
+                                setTimeout(() => {
+                                    resolve('clicked');
+                                }, 3000);
+                            } else {
+                                resolve('not_found');
+                            }
+                        }, 1000);
+                    });
+                }
+            """
+        )
+        
+        logger.info("✅ Rendering completato con script 'Tutte'")
+        
+        # Aspetta ulteriormente per il caricamento delle partite
+        time.sleep(2)
+        
+        # VECCHIO METODO - Non più necessario
+        """
         logger.info("🔘 Cerco pulsante 'Tutte'...")
         try:
             # Usa il selettore esatto trovato nell'HTML
-            click_success = response.html.page.evaluate("""
+            click_success = None
+            if hasattr(response.html, 'page') and response.html.page:
+                click_success = response.html.page.evaluate("""
                 () => {
                     // Cerca il container dei filtri
                     const filterContainer = document.querySelector('.season-node__tabs__filters');
@@ -73,22 +131,10 @@ def estrai_partite_palermo():
                     }
                     
                     console.log('Tag Tutte non trovato');
-                    return false;
                 }
-            """)
-            
-            if click_success == 'already_active':
-                logger.info("✅ Filtro 'Tutte' già attivo")
-            elif click_success == 'clicked':
-                logger.info("✅ Pulsante 'Tutte' cliccato con successo")
-                # Aspetta che le partite vengano caricate
-                time.sleep(5)
-            else:
-                logger.warning("⚠️ Pulsante 'Tutte' non trovato")
-            
-        except Exception as e:
-            logger.warning(f"⚠️ Errore nel click 'Tutte': {e}")
-            logger.info("📋 Continuo con le partite visibili...")
+            """
+        )
+        """
         
         # Cerca i match cards
         match_cards = response.html.find('.match-card')
