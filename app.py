@@ -179,10 +179,11 @@ def home():
     return jsonify({
         "status": "ok",
         "service": "API Calendario Palermo FC",
-        "version": "3.0",
+        "version": "3.1",
         "endpoints": {
             "/api/partite": "Tutte le partite",
             "/api/partite/casa": "Solo partite in casa del Palermo",
+            "/api/partite/trasferta": "Solo partite in trasferta del Palermo",
             "/health": "Health check"
         },
         "note": "Questa API estrae automaticamente TUTTE le partite cliccando sul pulsante 'Tutte'"
@@ -252,6 +253,41 @@ def get_partite_casa():
             "success": True,
             "count": len(partite_casa),
             "data": partite_casa,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Errore nell'endpoint: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route('/api/partite/trasferta', methods=['GET'])
+def get_partite_trasferta():
+    """Endpoint per ottenere solo le partite in TRASFERTA del Palermo"""
+    try:
+        logger.info("📥 Richiesta ricevuta: /api/partite/trasferta")
+        partite = estrai_partite_palermo()
+        
+        if not partite:
+            logger.warning("⚠️ Nessuna partita estratta")
+            return jsonify({
+                "success": False,
+                "error": "Impossibile estrarre partite dal sito",
+                "count": 0,
+                "data": []
+            }), 500
+        
+        # Filtra solo le partite dove Palermo è squadra in trasferta (awayTeam)
+        partite_trasferta = [p for p in partite if p.get('awayTeam') == 'Palermo']
+        logger.info(f"✈️ Partite in trasferta: {len(partite_trasferta)}")
+        
+        return jsonify({
+            "success": True,
+            "count": len(partite_trasferta),
+            "data": partite_trasferta,
             "timestamp": datetime.now().isoformat()
         })
         
