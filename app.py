@@ -94,6 +94,16 @@ def estrai_partite_palermo():
                 time_elem = card.find('.match-card__info--match-time p', first=True)
                 time_text = time_elem.text.strip() if time_elem else ""
                 
+                # Estrai il luogo/stadio
+                location_elem = card.find('.match-card__info--match-location', first=True)
+                if not location_elem:
+                    location_elem = card.find('.match-card__location', first=True)
+                if not location_elem:
+                    # Prova altri selettori comuni
+                    location_elem = card.find('[class*="location"]', first=True)
+                
+                location_text = location_elem.text.strip() if location_elem else ""
+                
                 team_imgs = card.find('.match-card__teams--team picture img')
                 teams = []
                 for img in team_imgs:
@@ -124,6 +134,7 @@ def estrai_partite_palermo():
                     "time": time_text,
                     "homeTeam": teams[0] if len(teams) > 0 else "",
                     "awayTeam": teams[1] if len(teams) > 1 else "",
+                    "location": location_text,
                     "status": status
                 }
                 
