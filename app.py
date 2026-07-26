@@ -13,6 +13,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
+# ==========================================================
+# CONFIGURAZIONE STAGIONE - Cambiare SOLO questa variabile
+# ogni nuova stagione (es. "2627" -> "2728")
+# ==========================================================
+SEASON = "2627"
+SEASON_URL = f'https://www.palermofc.com/it/{SEASON}/stagione/'
+
+
 def estrai_partite_palermo():
     """Estrae le partite dal sito del Palermo usando requests-html"""
     session = None
@@ -20,7 +28,7 @@ def estrai_partite_palermo():
         logger.info("🔍 Inizio estrazione partite...")
         
         session = HTMLSession()
-        url = 'https://www.palermofc.com/it/2526/stagione/'
+        url = SEASON_URL
         
         logger.info(f"📡 Recupero pagina: {url}")
         response = session.get(url, timeout=30)
@@ -93,16 +101,6 @@ def estrai_partite_palermo():
                 
                 time_elem = card.find('.match-card__info--match-time p', first=True)
                 time_text = time_elem.text.strip() if time_elem else ""
-                
-                # Estrai il luogo/stadio
-                location_elem = card.find('.match-card__info--match-location', first=True)
-                if not location_elem:
-                    location_elem = card.find('.match-card__location', first=True)
-                if not location_elem:
-                    # Prova altri selettori comuni
-                    location_elem = card.find('[class*="location"]', first=True)
-                
-                location_text = location_elem.text.strip() if location_elem else ""
                 
                 team_imgs = card.find('.match-card__teams--team picture img')
                 teams = []
