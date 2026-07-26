@@ -132,7 +132,6 @@ def estrai_partite_palermo():
                     "time": time_text,
                     "homeTeam": teams[0] if len(teams) > 0 else "",
                     "awayTeam": teams[1] if len(teams) > 1 else "",
-                    "location": location_text,
                     "status": status
                 }
                 
