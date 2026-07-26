@@ -1,6 +1,6 @@
 # Palermo FC Calendar API
 
-API automatica per estrarre il calendario delle partite del Palermo FC dalla stagione 2025-26.
+API automatica per estrarre il calendario delle partite del Palermo FC.
 
 ## 🚀 Endpoints
 
