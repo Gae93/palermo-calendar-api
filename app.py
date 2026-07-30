@@ -96,6 +96,26 @@ def estrai_partite_palermo():
                 round_elem = card.find('.match-card__info--league label', first=True)
                 round_text = round_elem.text.strip() if round_elem else ""
                 
+                # FALLBACK: se il selettore primario non trova nulla (es. dopo un
+                # redesign del sito che rinomina classi/tag), cerca il pattern
+                # testuale della giornata ovunque nel testo della card.
+                if not round_text:
+                    card_text = card.text
+                    m = re.search(r'\b\d{1,2}ª\b', card_text)
+                    if m:
+                        round_text = m.group(0)
+                    else:
+                        m2 = re.search(
+                            r'\b(Primo|Secondo|Terzo|Quarto|Quinto)\s+turno\b'
+                            r'|\bOttavi\b|\bQuarti\b|\bSemifinale\b|\bFinale\b',
+                            card_text, re.IGNORECASE
+                        )
+                        if m2:
+                            round_text = m2.group(0)
+                        elif competition and competition.lower() not in ("serie bkt", "serie b"):
+                            # amichevoli/tornei non di campionato senza pattern riconoscibile
+                            round_text = competition
+                
                 date_elem = card.find('.match-card__info--match-time h3', first=True)
                 date_text = date_elem.text.strip() if date_elem else ""
                 
