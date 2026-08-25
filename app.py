@@ -40,42 +40,44 @@ def estrai_partite_palermo():
         () => {
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    const filterContainer = document.querySelector('.season-node__tabs__filters');
-                    if (!filterContainer) {
-                        resolve('no_container');
-                        return;
-                    }
+                    // Cerca in TUTTA la pagina, non solo in un unico contenitore:
+                    // esistono più gruppi di filtri (es. per competizione E per
+                    // periodo temporale "Prossime/Passate/Tutte"), ciascuno con
+                    // un proprio tag "Tutte" da attivare.
+                    const allTags = document.querySelectorAll('.tag_element');
+                    const tutteTags = [];
                     
-                    const tags = filterContainer.querySelectorAll('.tag_element');
-                    let tutteTag = null;
-                    
-                    tags.forEach(tag => {
+                    allTags.forEach(tag => {
                         const text = tag.textContent.trim();
                         if (text === 'Tutte' || text.toLowerCase() === 'tutte') {
-                            tutteTag = tag;
+                            tutteTags.push(tag);
                         }
                     });
                     
-                    if (tutteTag) {
-                        if (tutteTag.classList.contains('active')) {
-                            resolve('already_active');
-                            return;
-                        }
-                        
-                        tutteTag.click();
-                        setTimeout(() => {
-                            resolve('clicked');
-                        }, 3000);
-                    } else {
+                    if (tutteTags.length === 0) {
                         resolve('not_found');
+                        return;
                     }
+                    
+                    let clickedCount = 0;
+                    tutteTags.forEach(tag => {
+                        if (!tag.classList.contains('active')) {
+                            tag.click();
+                            clickedCount++;
+                        }
+                    });
+                    
+                    setTimeout(() => {
+                        resolve('clicked_' + clickedCount + '_of_' + tutteTags.length);
+                    }, 3000);
                 }, 1000);
             });
         }
         """
         
-        # Render con lo script per cliccare "Tutte"
-        response.html.render(timeout=40, sleep=2, script=js_script)
+        # Render con lo script per cliccare tutti i tag "Tutte" (competizione + periodo)
+        render_result = response.html.render(timeout=40, sleep=2, script=js_script)
+        logger.info(f"🔍 DEBUG risultato click filtri: {render_result}")
         
         logger.info("✅ Rendering completato")
         
