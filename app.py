@@ -86,6 +86,19 @@ def estrai_partite_palermo():
         match_cards = response.html.find('.match-card')
         logger.info(f"🎯 Trovati {len(match_cards)} match cards")
         
+        # ===== DEBUG TEMPORANEO =====
+        # Cerca qualunque elemento contenga il testo "Juve Stabia" per capire
+        # se la card di una partita già giocata ha una struttura diversa.
+        try:
+            candidates = response.html.find('*:contains("Juve Stabia")')
+            logger.info(f"🔍 DEBUG: {len(candidates)} elementi contengono 'Juve Stabia'")
+            for c in candidates:
+                cls = c.attrs.get('class', '(nessuna classe)')
+                logger.info(f"🔍 DEBUG elemento: tag={c.element.tag} class='{cls}'")
+        except Exception as debug_err:
+            logger.error(f"🔍 DEBUG errore: {debug_err}")
+        # ===== FINE DEBUG TEMPORANEO =====
+        
         partite = []
         
         for idx, card in enumerate(match_cards):
