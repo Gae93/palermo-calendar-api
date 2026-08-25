@@ -86,19 +86,6 @@ def estrai_partite_palermo():
         match_cards = response.html.find('.match-card')
         logger.info(f"🎯 Trovati {len(match_cards)} match cards")
         
-        # ===== DEBUG TEMPORANEO =====
-        # Cerca qualunque elemento contenga il testo "Juve Stabia" per capire
-        # se la card di una partita già giocata ha una struttura diversa.
-        try:
-            candidates = response.html.find('*:contains("Juve Stabia")')
-            logger.info(f"🔍 DEBUG: {len(candidates)} elementi contengono 'Juve Stabia'")
-            for c in candidates:
-                cls = c.attrs.get('class', '(nessuna classe)')
-                logger.info(f"🔍 DEBUG elemento: tag={c.element.tag} class='{cls}'")
-        except Exception as debug_err:
-            logger.error(f"🔍 DEBUG errore: {debug_err}")
-        # ===== FINE DEBUG TEMPORANEO =====
-        
         partite = []
         
         for idx, card in enumerate(match_cards):
@@ -182,6 +169,16 @@ def estrai_partite_palermo():
                 continue
         
         logger.info(f"🎉 Estrazione completata: {len(partite)} partite totali")
+        
+        # ===== DEBUG TEMPORANEO =====
+        logger.info("🔍 DEBUG: elenco completo di tutte le partite estratte:")
+        for p in partite:
+            logger.info(
+                f"🔍   id={p.get('id')} home='{p.get('homeTeam')}' away='{p.get('awayTeam')}' "
+                f"round='{p.get('round')}' comp='{p.get('competition')}' status='{p.get('status')}' date='{p.get('date')}'"
+            )
+        # ===== FINE DEBUG TEMPORANEO =====
+        
         return partite
         
     except Exception as e:
