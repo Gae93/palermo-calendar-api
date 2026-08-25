@@ -39,45 +39,63 @@ def estrai_partite_palermo():
         js_script = """
         () => {
             return new Promise((resolve) => {
-                setTimeout(() => {
-                    // Cerca in TUTTA la pagina, non solo in un unico contenitore:
-                    // esistono più gruppi di filtri (es. per competizione E per
-                    // periodo temporale "Prossime/Passate/Tutte"), ciascuno con
-                    // un proprio tag "Tutte" da attivare.
+                let attempts = 0;
+                const maxAttempts = 20; // fino a ~10 secondi di tentativi (20 x 500ms)
+                
+                function tryClick() {
+                    attempts++;
                     const allTags = document.querySelectorAll('.tag_element');
-                    const tutteTags = [];
                     
+                    if (allTags.length === 0) {
+                        if (attempts >= maxAttempts) {
+                            resolve('timeout_no_tags_after_' + attempts + '_tries');
+                            return;
+                        }
+                        setTimeout(tryClick, 500);
+                        return;
+                    }
+                    
+                    // Trovati dei tag: cerca quello/i con testo "Tutte"
+                    const tutteTags = [];
                     allTags.forEach(tag => {
-                        const text = tag.textContent.trim();
-                        if (text === 'Tutte' || text.toLowerCase() === 'tutte') {
+                        if (tag.textContent.trim() === 'Tutte') {
                             tutteTags.push(tag);
                         }
                     });
                     
                     if (tutteTags.length === 0) {
-                        resolve('not_found');
+                        if (attempts >= maxAttempts) {
+                            const allTexts = Array.from(allTags).map(t => t.textContent.trim()).join('|');
+                            resolve('timeout_no_TUTTE_after_' + attempts + '_tries_found=[' + allTexts + ']');
+                            return;
+                        }
+                        setTimeout(tryClick, 500);
                         return;
                     }
                     
-                    let clickedCount = 0;
+                    // Trovati: clicca tutti quelli non ancora attivi
+                    let clicked = 0;
                     tutteTags.forEach(tag => {
                         if (!tag.classList.contains('active')) {
                             tag.click();
-                            clickedCount++;
+                            clicked++;
                         }
                     });
                     
+                    // Aspetta che il contenuto si aggiorni dopo il click
                     setTimeout(() => {
-                        resolve('clicked_' + clickedCount + '_of_' + tutteTags.length);
+                        resolve('ok_attempts=' + attempts + '_tutteFound=' + tutteTags.length + '_clicked=' + clicked);
                     }, 3000);
-                }, 1000);
+                }
+                
+                tryClick();
             });
         }
         """
         
-        # Render con lo script per cliccare tutti i tag "Tutte" (competizione + periodo)
-        render_result = response.html.render(timeout=40, sleep=2, script=js_script)
-        logger.info(f"🔍 DEBUG risultato click filtri: {render_result}")
+        # Render con polling per cliccare "Tutte" appena disponibile nel DOM
+        render_result = response.html.render(timeout=50, sleep=2, script=js_script)
+        logger.info(f"🔍 DEBUG risultato click 'Tutte': {render_result}")
         
         logger.info("✅ Rendering completato")
         
